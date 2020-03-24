@@ -1,3 +1,0 @@
-<aura:component controller="FlowEmailComposerCtrl" implements="lightning:availableForFlowScreens" access="global" >
-	hello
-</aura:component>

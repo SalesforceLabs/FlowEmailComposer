@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2018, salesforce.com, inc.
- * All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
- * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
- */
-
 @isTest(seeAllData=false)
 public class FlowEmailComposerCtrlTest {
     @Testsetup
@@ -34,12 +27,19 @@ public class FlowEmailComposerCtrlTest {
     static testmethod void testSendEmail(){
         List<ContentVersion> cvList = [SELECT Id, Title, ContentDocumentId FROM ContentVersion];
         
-
-       FlowEmailComposerCtrl.sendAnEmailMsg('test@gmail.com', 'test@gmail.com', 'test@gmail.com', 'test',
-                                             null,'body', 'sender', new string[]{cvList[0].ContentDocumentId},null);
-       system.assert([SELECT Id, ParentId, TextBody, Subject, FromName, FromAddress, ToAddress, CcAddress, BccAddress,createddate
-                      FROM EmailMessage
-                      WHERE Createddate=Today ].size()>0);
+        
+        Test.startTest();
+        
+            FlowEmailComposerCtrl.sendAnEmailMsg('test@gmail.com','test@gmail.com', 'test@gmail.com', 'test@gmail.com', 'test',
+                                                 null,null,'body', 'sender', new string[]{cvList[0].ContentDocumentId},null,true);
+            
+            system.assert([SELECT Id, ParentId, TextBody, Subject, FromName, FromAddress, ToAddress, CcAddress, BccAddress,createddate
+                           FROM EmailMessage
+                           WHERE Createddate=Today ].size()>0);
+        
+        Test.stopTest();
+        
+        
     }
     
 }

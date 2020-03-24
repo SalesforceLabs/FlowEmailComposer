@@ -2,6 +2,10 @@
     doInit : function(component, event, helper) {
         component.set('v.showSpinner', true);
         var templateId = component.get('v.emailTemplateId');
+        if(templateId && templateId.length==15){
+            helper.convertTo18(component);
+            templateId = component.get('v.emailTemplateId');
+        }
         var whatId = component.get('v.whatId');
         var whoId = component.get('v.whoId');
         var action = component.get('c.getEmailTemplates');
@@ -34,6 +38,7 @@
                 });
                 component.set('v.folders', folders);
                 component.set('v.emailTemplates', templates);
+                
                 if((!$A.util.isEmpty(whatId) || !$A.util.isEmpty(whoId)) && templateId){
                     helper.getEmailTemplateBody(templateId,whatId, component, helper);
                 }else{
@@ -69,18 +74,25 @@
         }
         var attsFromTemplate = component.get('v.attachmentsFromTemplate');
         for(var j=0; j<attsFromTemplate.length;j++){
-            attIds.push(attsFromTemplate[j].Id);
+            if(attsFromTemplate[j].isContentDocument == false){
+            	attIds.push(attsFromTemplate[j].attachId);
+            }else{
+                docIds.push(attsFromTemplate[j].attachId);
+            }
         }
         action.setParams({
+            "fromAddress"	: component.get('v.fromAddress'),
             "toAddressesStr" : component.get('v.toAddresses'),
             "ccAddressesStr" : component.get('v.ccAddresses'),
             "bccAddressesStr" : component.get('v.bccAddresses'),
             "subject" : component.get('v.subject'),
             "whoId" : component.get('v.whoId'),
+            "whatId" : component.get('v.whatId'),
             "body" : component.get('v.emailBody'),
             "senderDisplayName" : component.get('v.senderName'),
             "contentDocumentIds": docIds,
-            "attachmentIds" : attIds
+            "attachmentIds" : attIds,
+            "createActivity" :component.get('v.logEmail')
         });
         
         action.setCallback(this, function(response){
@@ -138,7 +150,7 @@
     removeAtt : function(component,event,helper){
         var attId = event.getSource().get('v.name');
         var attachments = component.get('v.attachmentsFromTemplate');
-        var remainingFiles = attachments.filter(att => att.Id != attId);
+        var remainingFiles = attachments.filter(att => att.attachId != attId);
         component.set('v.attachmentsFromTemplate', remainingFiles);
     },
     showcc : function(component,event,helper){

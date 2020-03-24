@@ -1,8 +1,8 @@
-<aura:component controller="FlowEmailComposerCtrl" implements="lightning:availableForFlowScreens" access="global">
+<aura:component controller="FlowEmailComposerCtrl" implements="lightning:availableForFlowScreens,force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global">
     <aura:attribute name="whoId" type="String" access="global"/>
     <aura:attribute name="whatId" type="String" access="global"/>
     <aura:attribute name="uploadRefId" type="String"/>
-    <aura:attribute name="emailBody" type="String"/>
+    <aura:attribute name="emailBody" type="String" access="global"/>
     <aura:attribute name="selTemplateId" type="String"/>
     <aura:attribute name="selectedDocumentId" type="String"/>
     <aura:attribute name="hasModalOpen" type="boolean" default="false"/>
@@ -16,17 +16,22 @@
     <aura:attribute name="filesTobeAttached" type="list"/>
     <aura:attribute name="attachmentsFromTemplate" type="list"/>
     <aura:attribute name="senderName" type="String" access="global"/>
+    <aura:attribute name="fromAddress" type="String" access="global"/>
     <aura:attribute name="toAddresses" type="String" default="" access="global"/>
     <aura:attribute name="ccAddresses" type="String" default="" access="global"/>
     <aura:attribute name="bccAddresses" type="String" default="" access="global"/>
     <aura:attribute name="showCCField" type="boolean" default="false"/>
     <aura:attribute name="showBccField" type="boolean" default="false"/>
     <aura:attribute name="emailTemplateId" type="String" access="global"/>
+    <aura:attribute name="hideTemplateSelection" type="boolean" default="false" access="global"/>
+    <aura:attribute name="logEmail" type="boolean" default="false" access="global"/>
+    
     <lightning:notificationsLibrary  aura:id="notifLib"/>
     <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
     
     <div class="slds-box" style="background:white;">
         <lightning:layout multipleRows="true">
+            
             <lightning:layoutItem size="12" class="slds-p-horizontal_small">
                 <lightning:input value="{!v.toAddresses}" required="true" label="To:Specify comma separated e-mail addresses"/>
             </lightning:layoutItem>
@@ -54,22 +59,27 @@
             <lightning:layoutItem size="12" class="slds-p-horizontal_small">
                 <lightning:input name="subject" label="Subject" value="{!v.subject}" required="true"/>
             </lightning:layoutItem>
-            <lightning:layoutItem size="12" class="slds-p-horizontal_small">
-                <lightning:select name="template" label="Select Email Template Folder:" aura:id="folderId" value="{!v.selFolderId}" onchange="{!c.filterEmailTemplates}">
-                    <option text="--Select an E-mail Template Folder--" value=""/>
-                    <aura:iteration items="{!v.folders}" var="folder">
-                        <option text="{!folder.Name}" value="{!folder.Id}"/>
-                    </aura:iteration>
-                </lightning:select>
-            </lightning:layoutItem>
-            <lightning:layoutItem size="12" class="slds-p-horizontal_small">
-                <lightning:select name="template" label="Select a Template:" aura:id="templateId" value="{!v.selTemplateId}" onchange="{!c.changeBody}">
-                    <option text="--Select a Template--" value=""/>
-                    <aura:iteration items="{!v.filteredTemplateList}" var="option">
-                        <option text="{!option.Name}" value="{!option.Id}"/>
-                    </aura:iteration>
-                </lightning:select>
-            </lightning:layoutItem>
+
+            <aura:if isTrue="{!not(v.hideTemplateSelection)}">
+                <lightning:layoutItem size="12" class="slds-p-horizontal_small">
+                    <lightning:select name="template" label="Select Email Template Folder:" aura:id="folderId" value="{!v.selFolderId}" onchange="{!c.filterEmailTemplates}">
+                        <option text="--Select an E-mail Template Folder--" value=""/>
+                        <aura:iteration items="{!v.folders}" var="folder">
+                            <option text="{!folder.Name}" value="{!folder.Id}"/>
+                        </aura:iteration>
+                    </lightning:select>
+                </lightning:layoutItem>
+                <lightning:layoutItem size="12" class="slds-p-horizontal_small">
+                    <lightning:select name="template" label="Select a Template:" aura:id="templateId" value="{!v.selTemplateId}" onchange="{!c.changeBody}">
+                        <option text="--Select a Template--" value=""/>
+                        <aura:iteration items="{!v.filteredTemplateList}" var="option">
+                            <option text="{!option.Name}" value="{!option.Id}"/>
+                        </aura:iteration>
+                    </lightning:select>
+                </lightning:layoutItem>
+            </aura:if>
+            
+            
             <lightning:layoutItem size="12" class="slds-p-horizontal_small">
                 <label class="slds-form-element__label"><abbr class="slds-required" title="required">* </abbr>Body
                 </label>
@@ -79,7 +89,7 @@
                 <lightning:layoutItem size="12" class="slds-p-horizontal_small">
                     <label class="slds-form-element__label">Attached Files from Template:</label>
                     <aura:iteration items="{!v.attachmentsFromTemplate}" var="att"> 
-                        <lightning:pill class="pillcss" name="{!att.Id}" label="{!(att.Name)}" onremove="{!c.removeAtt}"/>
+                        <lightning:pill class="pillcss" name="{!att.attachId}" label="{!(att.fileName)}" onremove="{!c.removeAtt}"/>
                     </aura:iteration> 
                 </lightning:layoutItem>
             </aura:if>

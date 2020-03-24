@@ -2,9 +2,13 @@
     <design:attribute name="whatId" Label="WhatId" Description="Specify Id if the object is Non-human object"/>
     <design:attribute name="whoId" Label="WhoId" Description="Specify Id if the object is human object such as Contact or Lead or User"/>
     <design:attribute name="senderName" Label="Sender Display Name" Description="The name that appears on the From line of the email"/>
+    <design:attribute name="fromAddress" Label="From:" description="Specify Organization-Wide Email Address"/>
     <design:attribute name="toAddresses" Label="Comma separated To Addresses" description="Specify comma separated email Addresses"/>
     <design:attribute name="ccAddresses" Label="Comma separated CC Addresses" description="Specify comma separated email Addresses"/>
     <design:attribute name="bccAddresses" Label="Comma separated BCC Addresses" description="Specify comma separated email Addresses"/>
+    <design:attribute name="emailBody" Label="Email Body" description="Specify email body"/>
     <design:attribute name="subject" Label="Subject"/>
-    <design:attribute name="emailTemplateId" Label="Specify 18 digit Email Template Id"/>
+    <design:attribute name="emailTemplateId" Label="Specify Email Template Id"/>
+    <design:attribute name="hideTemplateSelection" Label="Hide E-mail Template Selection" description="Check this to hide Email Template and folder selection"/>
+    <design:attribute name="logEmail" Label="Log Email" description="Check this to log email being sent into Activity History."/>
 </design:component>
