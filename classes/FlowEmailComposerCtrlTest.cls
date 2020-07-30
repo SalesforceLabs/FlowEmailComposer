@@ -11,10 +11,16 @@ public class FlowEmailComposerCtrlTest {
     }
     static testmethod void testgetEmailTemplates(){
         EmailTemplate e = new EmailTemplate (developerName = 'test', folderid=userinfo.getUserId(),TemplateType= 'Text', Name = 'test'); // plus any other fields that you want to set
+        EmailTemplate e2 = new EmailTemplate (developerName = 'test2', folderid=userinfo.getUserId(),TemplateType= 'Text', Name = 'test2');
         insert e;
-        List<EmailTemplate> emailTemplateList = FlowEmailComposerCtrl.getEmailTemplates();
+        insert e2;
+        List<EmailTemplate> emailTemplateList = FlowEmailComposerCtrl.getEmailTemplates('');
+        List<EmailTemplate> emailTemplateListSingle = FlowEmailComposerCtrl.getEmailTemplates(e.id);
         system.assert(emailTemplateList.size() > 0);
+        system.assert(emailTemplateListSingle.size() == 1);        
         system.assert(FlowEmailComposerCtrl.getTemplateDetails([select id from emailtemplate limit 1].id,null,null) != null);
+        
+        
     }
     static testmethod void testdeleteFiles(){
         List<ContentVersion> cvList = [SELECT Id, Title, ContentDocumentId FROM ContentVersion];

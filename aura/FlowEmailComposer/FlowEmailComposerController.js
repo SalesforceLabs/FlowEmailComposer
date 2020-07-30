@@ -9,6 +9,7 @@
         var whatId = component.get('v.whatId');
         var whoId = component.get('v.whoId');
         var action = component.get('c.getEmailTemplates');
+        var hideTemplateSelection = component.get('v.hideTemplateSelection');
         
         if($A.util.isEmpty(whatId) && $A.util.isEmpty(whoId)){
             component.set('v.uploadRefId', $A.get("$SObjectType.CurrentUser.Id"));
@@ -17,10 +18,15 @@
         }else if(!($A.util.isEmpty(whoId))){
             component.set('v.uploadRefId', whoId);
         }
+        if(hideTemplateSelection){ //if we are hiding the template selection boxes, we only need to query the template we are actively using
+            action.setParams({
+                "templateId" : templateId
+            });            
+        }
         action.setCallback(this, function(response){
             var state = response.getState();
             if (state === "SUCCESS") {
-                var templates = response.getReturnValue();
+                var templates = response.getReturnValue();                
                 var folders = [];
                 templates.forEach(function(template, index){
                     let existingFolders = [];

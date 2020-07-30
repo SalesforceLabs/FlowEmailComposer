@@ -1,8 +1,16 @@
 global with sharing class FlowEmailComposerCtrl {
     @AuraEnabled 
-    public static List<EmailTemplate> getEmailTemplates(){
+    public static List<EmailTemplate> getEmailTemplates(string templateId){
         if(Schema.sObjectType.EmailTemplate.isAccessible() && Schema.sObjectType.Attachment.isAccessible()){
             
+            if(string.isNotBlank(templateId)){ //if we are hiding the template selection boxes, we only need to query the template we are actively using
+                return new List<EmailTemplate>([SELECT Subject,Id, Name,DeveloperName, FolderId, Folder.DeveloperName, Folder.Name,
+                        (Select Id,Name from Attachments)
+                    FROM EmailTemplate
+                    WHERE id = :templateId AND TemplateType IN ('custom','text','html')
+                    LIMIT 1]);
+            }
+
             return new List<EmailTemplate>([SELECT Subject,Id, Name,DeveloperName, FolderId, Folder.DeveloperName, Folder.Name,
                 	   (Select Id,Name from Attachments)
                 FROM EmailTemplate
