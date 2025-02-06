@@ -1,0 +1,80 @@
+<template>
+    <div class="slds-box">
+      <lightning-layout multiple-rows="true">
+        <lightning-layout-item size="12" class="slds-p-horizontal_small">
+          <lightning-input value={toAddresses} required="true" label="To:Specify comma separated e-mail addresses"></lightning-input>
+        </lightning-layout-item>
+        
+          <lightning-layout-item size="1" class="slds-p-horizontal_small">
+            <lightning-button variant="base" label="CC" onclick={showcc}></lightning-button>
+          </lightning-layout-item>
+        
+        
+          <lightning-layout-item size="1" class="slds-p-horizontal_small">
+            <lightning-button variant="base" label="Bcc" onclick={showbcc}></lightning-button>
+          </lightning-layout-item>
+       
+       
+          <lightning-layout-item size="12" class="slds-p-horizontal_small">
+            <lightning-input value={ccAddresses} required="true" label="CC: Specify comma separated e-mail addresses"></lightning-input>
+          </lightning-layout-item>
+        
+        
+          <lightning-layout-item size="12" class="slds-p-horizontal_small">
+            <lightning-input value={bccAddresses} label="Bcc: Specify comma separated e-mail addresses" required="true"></lightning-input>
+          </lightning-layout-item>
+        
+        <lightning-layout-item size="12" class="slds-p-horizontal_small">
+          <lightning-input name="subject" label="Subject" value={subject} required="true"></lightning-input>
+        </lightning-layout-item>
+        
+          <lightning-layout-item size="12" class="slds-p-horizontal_small">
+            <lightning-combobox options={LightningComboboxOptions_1} name="template" label="Select Email Template Folder:" data-aura-id="folderId" value={selFolderId} onchange={filteremailtemplates}>
+              <option text="--Select an E-mail Template Folder--" value=""></option>
+              <template for:each={folders} for:item="folder">
+                <option text={folder.Name} value={folder.Id} key={folder}></option>
+              </template>
+            </lightning-combobox>
+          </lightning-layout-item>
+          <lightning-layout-item size="12" class="slds-p-horizontal_small">
+            <lightning-combobox options={LightningComboboxOptions_2} name="template" label="Select a Template:" data-aura-id="templateId" value={selTemplateId} onchange={changebody}>
+              <option text="--Select a Template--" value=""></option>
+              <template for:each={filteredTemplateList} for:item="option">
+                <option text={option.Name} value={option.Id} key={option}></option>
+              </template>
+            </lightning-combobox>
+          </lightning-layout-item>
+        <lightning-layout-item size="12" class="slds-p-horizontal_small">
+          <label class="slds-form-element__label">
+            <abbr class="slds-required" title="required">* </abbr>Body
+                  
+          </label>
+          <lightning-input-rich-text label="Body" value={emailBody}></lightning-input-rich-text>
+        </lightning-layout-item>
+        
+          <lightning-layout-item size="12" class="slds-p-horizontal_small">
+            <label class="slds-form-element__label">Attached Files from Template:</label>
+            <template for:each={attachmentsFromTemplate} for:item="att">
+              <lightning-pill name={att.attachId} key={att} class="pillcss" label={att_fi_lessThanOrEquals_Name} onremove={removeatt}></lightning-pill>
+            </template>
+          </lightning-layout-item>
+       
+        <lightning-layout-item size="12" class="slds-p-horizontal_small">
+          <label class="slds-form-element__label">Attach New Files:</label>
+          <lightning-file-upload label="" multiple="true" record-id={uploadRefId} onuploadfinished={uploadfinished}></lightning-file-upload>
+        </lightning-layout-item>
+        <lightning-layout-item size="12" class="slds-p-horizontal_small">
+          <template for:each={filesTobeAttached} for:item="f">
+            <lightning-pill name={f.documentId} key={f} class="pillcss" label={f_name} onremove={delfiles} onclick={previewfile}></lightning-pill>
+          </template>
+          <template if:true={showSpinner}>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+          </template>
+        </lightning-layout-item>
+        <lightning-layout-item size="12" class="slds-p-around_small">
+          <lightning-button class="slds-button slds-button_brand slds-align_absolute-center" label="Send" onclick={sendemail}></lightning-button>
+        </lightning-layout-item>
+      </lightning-layout>
+    </div>
+</template>
+    
