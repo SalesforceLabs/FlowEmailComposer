@@ -1,15 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>62.0</apiVersion>
+    <apiVersion>63.0</apiVersion>
     <isExposed>true</isExposed>
     <targets>
         <target>lightning__FlowScreen</target>
     </targets>
+    <masterLabel>Flow Email Composer</masterLabel>
+    <description>Updated LWC Version of the Popular Flow Email Composer</description>
     <targetConfigs>
         <targetConfig targets="lightning__FlowScreen">
-            <property name="recordId" label="RecordId" type="String" />
-            <property name="whoId" type="String"  />           
-            
+            <property name="toAddresses" label="To Addresses" type="String" description="Comma Separated List of Email Addresses"/>
+            <property name="ccAddresses" label="CC Addresses" type="String" description="Comma Separated List of Email Addresses" />
+            <property name="bccAddresses" label="BCC Addresses" type="String" description="Comma Separated List of Email Addresses"/>
+            <property name="fromAddress" label="From Email Address" type="String" />
+            <property name="senderName" label="Sender Name" type="String"/>
+            <property name="hideTemplateSelection" label="Hide Template Selection" type="Boolean"/>
+            <property name="additionalCondition" label="Additional Template Filter" type="String" description="Add additional filter criteria to return specific email templates i.e. FolderId = 'xyz'"/>
+            <property name="maxLimit" label="Limit of Email Templates Returned" type="Integer" description="Enter a number of Templates to return in the picker"/>
+            <property name="emailTemplateId" label="Default Email Template Id" type="String"/>
+            <property name="whatId" label="Related Record Id" type="String" description="Used in merge fields and activity tracking" />            
+            <property name="whoId" label="Contact, Lead or User Id" type="String" description="Used in merge fields and activity tracking"/>          
+            <property name="subject" label="Email Subject" type="String"/>
+            <property name="logEmail" label="Log Email on Send" type="Boolean" />
+            <property name="recordId" label="Uploaded File Related Record Id" type="String"/>
+            <property name="emailBody" label="Email Body" type="String"/>
+            <property name="transitionOnSend" label="Navigate Flow on Send" type="Boolean" description="When true after successful email send flow will navigate to next screen or finish"/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

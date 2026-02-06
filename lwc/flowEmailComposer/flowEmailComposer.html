@@ -1,135 +1,112 @@
 <template>
-  <div class="slds-box" style="background:white;">
-      <lightning-layout multiple-rows>
-          <!-- To Address -->
-          <lightning-layout-item size="12" class="slds-p-horizontal_small">
-              <lightning-input
-                  value={toAddresses}
-                  required
-                  label="To: Specify comma-separated e-mail addresses"
-                  onchange={handleInputChange}
-                  data-field="toAddresses">
-              </lightning-input>
-          </lightning-layout-item>
+    <div class="slds-box" style="background:white;">
+        <lightning-layout multiple-rows>
+            <!-- To Address -->
+            <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                <lightning-input value={toAddresses} required label="To: Specify comma-separated e-mail addresses"
+                    onchange={handleInputChange} data-field="toAddresses">
+                </lightning-input>
+            </lightning-layout-item>
 
-          <!-- CC and BCC Buttons -->
-          
-              <lightning-layout-item size="1" class="slds-p-horizontal_small">
-                  <lightning-button variant="base" label="CC" onclick={showCC}></lightning-button>
-              </lightning-layout-item>
-         
-          
-              <lightning-layout-item size="1" class="slds-p-horizontal_small">
-                  <lightning-button variant="base" label="Bcc" onclick={showBCC}></lightning-button>
-              </lightning-layout-item>
-          
+            <!-- CC and BCC Buttons -->
 
-          <!-- CC and BCC Fields -->
-          <template if:true={showCCField}>
-              <lightning-layout-item size="12" class="slds-p-horizontal_small">
-                  <lightning-input
-                      value={ccAddresses}
-                      label="CC: Specify comma-separated e-mail addresses"
-                      onchange={handleInputChange}
-                      data-field="ccAddresses">
-                  </lightning-input>
-              </lightning-layout-item>
-          </template>
-          <template if:true={showBccField}>
-              <lightning-layout-item size="12" class="slds-p-horizontal_small">
-                  <lightning-input
-                      value={bccAddresses}
-                      label="Bcc: Specify comma-separated e-mail addresses"
-                      onchange={handleInputChange}
-                      data-field="bccAddresses">
-                  </lightning-input>
-              </lightning-layout-item>
-          </template>
+            <lightning-layout-item size="1" class="slds-p-horizontal_small">
+                <lightning-button variant="base" label="CC" onclick={showCC}></lightning-button>
+            </lightning-layout-item>
 
-          <!-- Subject -->
-          <lightning-layout-item size="12" class="slds-p-horizontal_small">
-              <lightning-input
-                  name="subject"
-                  label="Subject"
-                  value={subject}
-                  required
-                  onchange={handleInputChange}
-                  data-field="subject">
-              </lightning-input>
-          </lightning-layout-item>
 
-          <!-- Email Template Selection -->
-          <template if:false={hideTemplateSelection}>
-              <lightning-layout-item size="12" class="slds-p-horizontal_small">
-                  <lightning-combobox
-                      name="templateFolder"
-                      label="Select Email Template Folder:"
-                      value={selFolderId}
-                      options={folderOptions}
-                      onchange={filterEmailTemplates}>
-                  </lightning-combobox>
-              </lightning-layout-item>
-              <lightning-layout-item size="12" class="slds-p-horizontal_small">
-                  <lightning-combobox
-                      name="template"
-                      label="Select a Template:"
-                      value={selTemplateId}
-                      options={filteredTemplateList}
-                      onchange={changeBody}>
-                  </lightning-combobox>
-              </lightning-layout-item>
-          </template>
+            <lightning-layout-item size="1" class="slds-p-horizontal_small">
+                <lightning-button variant="base" label="Bcc" onclick={showBCC}></lightning-button>
+            </lightning-layout-item>
 
-          <!-- Email Body -->
-          <lightning-layout-item size="12" class="slds-p-horizontal_small">
-              <label class="slds-form-element__label">
-                  <abbr class="slds-required" title="required">*</abbr> Body
-              </label>
-              <lightning-input-rich-text
-                  label="Body"
-                  value={emailBody}
-                  onchange={handleInputChange}
-                  data-field="emailBody">
-              </lightning-input-rich-text>
-          </lightning-layout-item>
 
-          <!-- Attachments -->
-          <template if:true={attachmentsFromTemplate.length}>
-              <lightning-layout-item size="12" class="slds-p-horizontal_small">
-                  <label class="slds-form-element__label">Attached Files from Template:</label>
-                  <template for:each={attachmentsFromTemplate} for:item="att">
-                      <lightning-pill
-                          key={att.attachId}
-                          class="pillcss"
-                          name={att.attachId}
-                          label={att.fileName}
-                          onremove={removeAttachment}>
-                      </lightning-pill>
-                  </template>
-              </lightning-layout-item>
-          </template>
-          <lightning-layout-item size="12" class="slds-p-horizontal_small">
-              <label class="slds-form-element__label">Attach New Files:</label>
-              <lightning-file-upload
-                  label=""
-                  multiple
-                  record-id={uploadRefId}
-                  onuploadfinished={handleUploadFinished}>
-              </lightning-file-upload>
-          </lightning-layout-item>
+            <!-- CC and BCC Fields -->
+            <template lwc:if={showCCField}>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <lightning-input value={ccAddresses} label="CC: Specify comma-separated e-mail addresses"
+                        onchange={handleInputChange} data-field="ccAddresses">
+                    </lightning-input>
+                </lightning-layout-item>
+            </template>
+            <template lwc:if={showBccField}>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <lightning-input value={bccAddresses} label="Bcc: Specify comma-separated e-mail addresses"
+                        onchange={handleInputChange} data-field="bccAddresses">
+                    </lightning-input>
+                </lightning-layout-item>
+            </template>
 
-          <!-- Send Button -->
-          <lightning-layout-item size="12" class="slds-p-around_small">
-              <lightning-button
-                  disabled={isSendDisabled}
-                  class="slds-button slds-button_brand slds-align_absolute-center"
-                  label="Send"
-                  onclick={sendEmail}>
-              </lightning-button>
-          </lightning-layout-item>
-      </lightning-layout>
-  </div>
+            <!-- Subject -->
+            <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                <lightning-input name="subject" label="Subject" value={subject} required onchange={handleInputChange}
+                    data-field="subject">
+                </lightning-input>
+            </lightning-layout-item>
 
-  
+            <!-- Email Template Selection -->
+            <template if:false={hideTemplateSelection}>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <lightning-combobox name="templateFolder" label="Select Email Template Folder:" value={selFolderId}
+                        options={folderOptions} onchange={filterTemplatesByFolder}>
+                    </lightning-combobox>
+                </lightning-layout-item>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <lightning-combobox name="template" label="Select a Template:" value={selTemplateId}
+                        options={filteredTemplateList} onchange={templateChanged}>
+                    </lightning-combobox>
+                </lightning-layout-item>
+            </template>
+
+            <!-- Email Body -->
+            <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr> Body
+                </label>
+                <lightning-input-rich-text label="Body" value={emailBody} onchange={handleInputChange}
+                    data-field="emailBody">
+                </lightning-input-rich-text>
+            </lightning-layout-item>
+
+            <!-- Attachments -->
+            <template lwc:if={attachmentsFromTemplate.length}>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <label class="slds-form-element__label">Attached Files from Template:</label>
+                    <template for:each={attachmentsFromTemplate} for:item="att">
+                        <lightning-pill key={att.attachId} class="pillcss" name={att.attachId} label={att.fileName}
+                            onremove={removeAttachment}>
+                        </lightning-pill>
+                    </template>
+                </lightning-layout-item>
+            </template>
+            <template lwc:if={uploadedFiles.length}>
+                <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                    <label class="slds-form-element__label">Uploaded Files:</label>
+                    <template for:each={uploadedFiles} for:item="file">
+                        <lightning-pill key={file.documentId} class="pillcss" name={file.documentId} label={file.name}
+                            onremove={removeFile}>
+                        </lightning-pill>
+                    </template>
+                </lightning-layout-item>
+            </template>
+
+            <lightning-layout-item size="12" class="slds-p-horizontal_small">
+                <label class="slds-form-element__label">Attach New Files:</label>
+                <lightning-file-upload label="" multiple record-id={uploadRefId}
+                    onuploadfinished={handleUpload_lightningFile}>
+                </lightning-file-upload>
+            </lightning-layout-item>
+
+            <!-- Send Button -->
+            <lightning-layout-item class="slds-p-around_small slds-align-center">
+                <lightning-button disabled={isSendDisabled} label="Send" onclick={sendEmailFromButton} variant="brand">
+                </lightning-button>
+            </lightning-layout-item>
+        </lightning-layout>
+    </div>
+
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+    </template>
+
+
 </template>
-    

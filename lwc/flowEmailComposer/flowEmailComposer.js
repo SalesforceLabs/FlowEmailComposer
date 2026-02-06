@@ -2,9 +2,12 @@ import { LightningElement, api, track } from "lwc";
 import getEmailTemplates from "@salesforce/apex/FlowEmailComposerCtrl.getEmailTemplates";
 import sendAnEmailMsg from "@salesforce/apex/FlowEmailComposerCtrl.sendAnEmailMsg";
 import getTemplateDetails from "@salesforce/apex/FlowEmailComposerCtrl.getTemplateDetails";
+import Toast from 'lightning/toast';
+import { FlowAttributeChangeEvent, FlowNavigationNextEvent, FlowNavigationFinishEvent } from 'lightning/flowSupport';
 
 
 export default class flowEmailComposer extends LightningElement {
+    // Public properties with @api annotation for attribute flow
     @api emailTemplateId;
     @api whatId;
     @api whoId;
@@ -14,31 +17,41 @@ export default class flowEmailComposer extends LightningElement {
     @api bccAddresses;
     @api subject;
     @api senderName;
-    @api logEmail;
+    @api logEmail = false;
+    @api additionalCondition;
     @api recordId;
+    @api emailBody;
+    @api maxLimit;
+    @api hideTemplateSelection = false;
+    @api transitionOnSend;
+    @api availableActions = [];
 
+    // Properties with @track annotation for tracking changes
     @track showSpinner = false;
-    @track uploadRefId;
     @track folders = [];
-    @track emailTemplates = [];
     @track filteredTemplateList = [];
     @track attachmentsFromTemplate = [];
-    @track filesTobeAttached = [];
-    @track hasModalOpen = false;
-    @track selectedDocumentId;
     @track showCCField = false;
     @track showBccField = false;
-    @track emailBody = '';
     @track selTemplateId;
     @track selFolderId;
+    @track allTemplates = [];
+    @track docIds = [];
+    @track attachmentIds = [];
+    @track objFiles = [];
+    @track uploadedFiles = [];
 
+
+    // connectedCallback method to initialize the component
     connectedCallback() {
         this.initializeComponent();
     }
 
+    // Initialization method
     initializeComponent() {
         this.showSpinner = true;
-        getEmailTemplates()
+        //Call Apex to get initial list of folders and templates
+        getEmailTemplates({ additionalCondition: this.additionalCondition, maxLimit: this.maxLimit })
             .then((templates) => {
                 const folders = [];
                 templates.forEach((template) => {
@@ -54,30 +67,58 @@ export default class flowEmailComposer extends LightningElement {
                     label: folder.Name,
                     value: folder.Id,
                 }));
-                this.filteredTemplateList = templates.map((template) => ({
+                this.allTemplates = templates.map((template) => ({
                     label: template.Name,
                     value: template.Id,
                     ...template,
                 }));
+                this.filteredTemplateList = [...this.allTemplates]; // Initialize with all templates                
                 this.showSpinner = false;
+
+                // Check if templateId has a value and call changeBody if it does
+                if (this.emailTemplateId) {
+                    //console.log("initial email template is " + this.emailTemplateId);
+                    this.selTemplateId = this.emailTemplateId;
+                    //console.log("calling changeBody with " + this.selTemplateId);
+                    this.changeBody(this.selTemplateId);
+
+                }
             })
+
+
             .catch((error) => {
                 console.error('Error fetching email templates:', error);
                 this.showSpinner = false;
             });
     }
 
-    filterEmailTemplates(event) {
+    // Filter templates based on selected folder
+    filterTemplatesByFolder(event) {
         this.selFolderId = event.detail.value;
-        this.filteredTemplateList = this.filteredTemplateList.filter(
-            (template) => template.FolderId === this.selFolderId
-        );
+        if (this.selFolderId) {
+            this.filteredTemplateList = this.allTemplates.filter(
+                (template) => template.FolderId === this.selFolderId
+            );
+        } else {
+            this.filteredTemplateList = [...this.allTemplates]; // Show all templates if no folder selected
+        }
         this.attachmentsFromTemplate = [];
+        this.selTemplateId = null; // Reset selected template when folder changes
     }
 
-    changeBody(event) {
-        this.showSpinner = true;
+    // Change the email body when a new template is selected
+    templateChanged(event) {
         this.selTemplateId = event.detail.value;
+        this.changeBody(this.selTemplateId);
+    }
+
+
+    // Change the email body based on the selected template
+    changeBody(selTemplateId) {
+        //console.log('changeBody called with value:', selTemplateId);
+        this.showSpinner = true;
+        this.selTemplateId = selTemplateId;
+
         getTemplateDetails({
             templateId: this.selTemplateId,
             whoId: this.whoId,
@@ -88,25 +129,105 @@ export default class flowEmailComposer extends LightningElement {
                 this.subject = result.subject;
                 this.emailBody = result.body;
                 this.attachmentsFromTemplate = result.fileAttachments;
-                this.showSpinner = false; // Hide spinner after data is fetched
+                //console.log("Attachments are " + JSON.stringify(this.attachmentsFromTemplate));
+
+                // Initialize arrays to store document and attachment IDs
+                let docIdsFromAttachment = [];
+                let attachmentIdsFromAttachment = [];
+
+                // Check if there are file attachments
+                if (this.attachmentsFromTemplate && this.attachmentsFromTemplate.length > 0) {
+                    this.attachmentsFromTemplate.forEach(attachment => {
+                        if (attachment.isContentDocument) {
+                            docIdsFromAttachment.push(attachment.attachId);
+                        } else {
+                            attachmentIdsFromAttachment.push(attachment.attachId);
+                        }
+                    });
+
+                    this.docIds = docIdsFromAttachment;
+                    this.attachmentIds = attachmentIdsFromAttachment;
+                } else {
+                    //console.log('No attachments found or attachmentsFromTemplate is undefined');
+                    this.docIds = [];
+                    this.attachmentIds = [];
+                }
+                //console.log("docIds from Template are " + docIdsFromAttachment);
+                //console.log("attachmentIds from Template are " + attachmentIdsFromAttachment);
+                this.showSpinner = false;
             })
             .catch((error) => {
                 // Handle any errors
-                console.error('Error fetching template details:', error);
-                this.showSpinner = false; // Hide spinner even if there's an error
+                console.error('Error in getTemplateDetails:', error);
+                this.showSpinner = false;
+                Toast.show({
+                    label: 'Error',
+                    message: error.body.message,
+                    mode: 'dismissable',
+                    variant: 'error',
+                }, this);
             });
     }
-    
 
-    handleUploadFinished(event) {
-        const uploadedFiles = event.detail.files;
-        this.filesToBeAttached = [...this.filesToBeAttached, ...uploadedFiles];
+    // Handle file uploads for both file attachments and content documents
+    handleUpload_lightningFile(event) {
+        let files = event.detail.files;
+        //console.log("Files are " + JSON.stringify(files));
+        this.handleUploadFinished(files);
     }
 
-    sendEmail() {
+
+    handleUploadFinished(files) {
+        //console.log("handleUploadFinished called with files: " + JSON.stringify(files));
+        let objFiles = [];
+        let documentIds = this.docIds;
+        files.forEach(file => {
+
+            let objFile = {
+                name: file.name,
+                documentId: file.documentId,
+                contentVersionId: file.contentVersionId
+            }
+            objFiles.push(objFile);
+            documentIds.push(file.documentId);
+            this.docIds = documentIds;
+            this.uploadedFiles = objFiles;
+        })
+        //console.log("docIds is " + docIds);
+        //console.log("objFiles is " + JSON.stringify(objFiles));
+        //console.log("uploadedFiles is " + JSON.stringify(this.uploadedFiles));
+
+    }
+
+
+    _fireFlowEvent(eventName, data) {
+        this.dispatchEvent(new FlowAttributeChangeEvent(eventName, data));
+    }
+
+    // Remove an attachment from the email
+    removeAttachment(event) {
+        const attId = event.detail.name;
+        this.attachmentsFromTemplate = this.attachmentsFromTemplate.filter(
+            (att) => att.attachId !== attId
+        );
+    }
+
+    // Remove an uploaded file
+    removeFile(event) {
+        const fileId = event.detail.name;
+        this.uploadedFiles = this.uploadedFiles.filter(
+            (file) => file.documentId !== fileId
+        );
+        this.docIds = this.docIds.filter(
+            (file) => file !== fileId
+        );
+    }
+
+    // Send an email using the sendAnEmailMsg Apex method
+    sendEmailFromButton() {
         this.showSpinner = true;
-        const docIds = this.filesToBeAttached.map((file) => file.documentId);
-        const attIds = this.attachmentsFromTemplate.map((att) => att.attachId);
+        //console.log("docIds being sent +" + this.docIds);
+        //console.log("attachmentIds being sent +" + this.attachmentIds);
 
         sendAnEmailMsg({
             fromAddress: this.fromAddress,
@@ -118,53 +239,74 @@ export default class flowEmailComposer extends LightningElement {
             whatId: this.whatId,
             body: this.emailBody,
             senderDisplayName: this.senderName,
-            contentDocumentIds: docIds,
-            attachmentIds: attIds,
+            contentDocumentIds: this.docIds,
+            attachmentIds: this.attachmentIds,
             createActivity: this.logEmail,
         })
             .then(() => {
-                this.showToast('Success', 'Email sent successfully!', 'success');
+                Toast.show({
+                    label: 'Success',
+                    message: 'Email Sent',
+                    mode: 'dismissable',
+                    variant: 'success'
+                }, this);
                 this.resetForm();
+                if(this.transitionOnSend) {
+                    this.handleNavigation();
+                }                
             })
             .catch((error) => {
                 console.error('Error sending email:', error);
-                this.showToast('Error', 'Failed to send email.', 'error');
+                Toast.show({
+                    label: 'Error',
+                    message: error.body.message,
+                    mode: 'dismissable',
+                    variant: 'error',
+                }, this);
             })
             .finally(() => {
                 this.showSpinner = false;
             });
+            
+            
     }
 
-    removeAttachment(event) {
-        const attId = event.detail.name;
-        this.attachmentsFromTemplate = this.attachmentsFromTemplate.filter(
-            (att) => att.attachId !== attId
-        );
-    }
-
+    // Reset the form fields
     resetForm() {
         this.emailBody = '';
+        this.subject = '';
         this.attachmentsFromTemplate = [];
         this.selTemplateId = '';
         this.selFolderId = '';
         this.filteredTemplateList = [];
-        this.filesToBeAttached = [];
-    }
-
-    showToast(title, message, variant) {
-        const event = new ShowToastEvent({
-            title,
-            message,
-            variant,
-        });
-        this.dispatchEvent(event);
     }
 
     showCC() {
-        this.showCCField = true;
+        this.showCCField = !this.showCCField;
     }
 
     showBCC() {
-        this.showBccField = true;
+        this.showBccField = !this.showBccField;
     }
+
+    handleInputChange(event) {
+        const field = event.target.dataset.field;
+        const value = event.target.value;
+        this[field] = value;
+        this._fireFlowEvent(this.field, this.value)
+        //console.log('handleInputChange: field: ' + field + ' value: ' + value)
+    }
+
+    // navigate to the next screen or (if last element) terminate the flow    
+    handleNavigation() {    
+        if (this.availableActions.find(action => action === 'NEXT')) {
+            const navigateNextEvent = new FlowNavigationNextEvent();
+            this.dispatchEvent(navigateNextEvent);
+        } else if (this.availableActions.find(action => action === 'FINISH')) {
+            const navigateFinishEvent = new FlowNavigationFinishEvent();
+            this.dispatchEvent(navigateFinishEvent);
+        }
+    
+}
+
 }
