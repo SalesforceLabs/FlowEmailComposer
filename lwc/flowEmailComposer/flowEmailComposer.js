@@ -18,13 +18,33 @@ export default class flowEmailComposer extends LightningElement {
     @api subject;
     @api senderName;
     @api logEmail = false;
-    @api additionalCondition;
+    @api folderIdFilter;
     @api recordId;
     @api emailBody;
     @api maxLimit;
     @api hideTemplateSelection = false;
     @api transitionOnSend;
     @api availableActions = [];
+    @api hideFolderPicker = false;
+    @api hideAttachments = false;
+    @api expandCcOnLoad = false;
+    @api expandBccOnLoad = false;
+    @api defaultFolderId;
+    @api bodyHeight;
+    @api toLabel;
+    @api toHelpText;
+    @api ccLabel;
+    @api ccHelpText;
+    @api bccLabel;
+    @api bccHelpText;
+    @api subjectLabel;
+    @api subjectHelpText;
+    @api bodyLabel;
+    @api bodyHelpText;
+    @api folderLabel;
+    @api folderHelpText;
+    @api templateLabel;
+    @api templateHelpText;
 
     // Properties with @track annotation for tracking changes
     @track showSpinner = false;
@@ -40,24 +60,55 @@ export default class flowEmailComposer extends LightningElement {
     @track attachmentIds = [];
     @track objFiles = [];
     @track uploadedFiles = [];
+    @track _bodyDisplay = '';
+
+    get resolvedToLabel()       { return this.toLabel       || 'To'; }
+    get resolvedCcLabel()       { return this.ccLabel       || 'CC'; }
+    get resolvedBccLabel()      { return this.bccLabel      || 'BCC'; }
+    get resolvedSubjectLabel()  { return this.subjectLabel  || 'Subject'; }
+    get resolvedBodyLabel()     { return this.bodyLabel     || 'Body'; }
+    get resolvedFolderLabel()   { return this.folderLabel   || 'Select Email Template Folder:'; }
+    get resolvedTemplateLabel() { return this.templateLabel || 'Select a Template:'; }
+
+    get showFolderPicker()       { return !this.hideTemplateSelection && !this.hideFolderPicker; }
+    get showTemplatePicker()     { return !this.hideTemplateSelection; }
+    get showAttachmentUploader() { return !this.hideAttachments; }
 
 
     // connectedCallback method to initialize the component
     connectedCallback() {
+        if (this.expandCcOnLoad)  this.showCCField  = true;
+        if (this.expandBccOnLoad) this.showBccField = true;
+        if (this.emailBody) this._bodyDisplay = this.emailBody;
         this.initializeComponent();
     }
 
     renderedCallback() {
+        this._applyBodyEditorSizing();
         this._syncBodyEditorValue();
         this._wireBodyEditorCursorFix();
     }
 
+    _applyBodyEditorSizing() {
+        const rte = this.template.querySelector('lightning-input-rich-text');
+        if (!rte || !rte.shadowRoot) return;
+        const editable = rte.shadowRoot.querySelector('.slds-rich-text-editor__textarea');
+        if (!editable) return;
+        const h = this.bodyHeight && this.bodyHeight > 0 ? this.bodyHeight : 300;
+        if (editable.dataset.fecApplied === String(h)) return;
+        editable.style.setProperty('min-height', `${h}px`, 'important');
+        editable.style.setProperty('height', `${h}px`, 'important');
+        editable.style.setProperty('resize', 'vertical', 'important');
+        editable.style.setProperty('overflow', 'auto', 'important');
+        editable.dataset.fecApplied = String(h);
+    }
+
     _syncBodyEditorValue() {
-        if (this.emailBody === this._lastPushedBody) return;
+        if (this._bodyDisplay === this._lastPushedBody) return;
         const rte = this.template.querySelector('lightning-input-rich-text');
         if (!rte) return;
-        rte.value = this.emailBody || '';
-        this._lastPushedBody = this.emailBody;
+        rte.value = this._bodyDisplay || '';
+        this._lastPushedBody = this._bodyDisplay;
     }
 
     // Intercept the first click into the rich-text editor so the caret lands
@@ -147,7 +198,7 @@ export default class flowEmailComposer extends LightningElement {
     initializeComponent() {
         this.showSpinner = true;
         //Call Apex to get initial list of folders and templates
-        getEmailTemplates({ additionalCondition: this.additionalCondition, maxLimit: this.maxLimit })
+        getEmailTemplates({ folderIdFilter: this.folderIdFilter, maxLimit: this.maxLimit })
             .then((templates) => {
                 const folders = [];
                 templates.forEach((template) => {
@@ -168,7 +219,15 @@ export default class flowEmailComposer extends LightningElement {
                     value: template.Id,
                     ...template,
                 }));
-                this.filteredTemplateList = [...this.allTemplates]; // Initialize with all templates                
+                this.filteredTemplateList = [...this.allTemplates]; // Initialize with all templates
+
+                if (this.defaultFolderId) {
+                    this.selFolderId = this.defaultFolderId;
+                    this.filteredTemplateList = this.allTemplates.filter(
+                        (t) => t.FolderId === this.defaultFolderId
+                    );
+                }
+
                 this.showSpinner = false;
 
                 // Check if templateId has a value and call changeBody if it does
@@ -224,6 +283,7 @@ export default class flowEmailComposer extends LightningElement {
                 // Handle the successful response
                 this.subject = result.subject;
                 this.emailBody = result.body;
+                this._bodyDisplay = result.body;
                 this.attachmentsFromTemplate = result.fileAttachments;
                 //console.log("Attachments are " + JSON.stringify(this.attachmentsFromTemplate));
 
@@ -370,6 +430,7 @@ export default class flowEmailComposer extends LightningElement {
     // Reset the form fields
     resetForm() {
         this.emailBody = '';
+        this._bodyDisplay = '';
         this.subject = '';
         this.attachmentsFromTemplate = [];
         this.selTemplateId = '';
@@ -395,6 +456,8 @@ export default class flowEmailComposer extends LightningElement {
     handleBodyChange(event) {
         const value = event.target.value;
         this.emailBody = value;
+        this._bodyDisplay = value;
+        this._lastPushedBody = value;
         this._fireFlowEvent('emailBody', value);
     }
 

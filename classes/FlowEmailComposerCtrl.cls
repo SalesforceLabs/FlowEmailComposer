@@ -1,15 +1,15 @@
 global with sharing class FlowEmailComposerCtrl {
     @AuraEnabled
-    public static List<EmailTemplate> getEmailTemplates(String additionalCondition, Integer maxLimit) {
+    public static List<EmailTemplate> getEmailTemplates(String folderIdFilter, Integer maxLimit) {
         if(Schema.sObjectType.EmailTemplate.isAccessible() && Schema.sObjectType.Attachment.isAccessible()) {
             String query = 'SELECT Subject, Id, Name, DeveloperName, FolderId, Folder.DeveloperName, Folder.Name, ' +
                            '(SELECT Id, Name FROM Attachments) ' +
                            'FROM EmailTemplate ' +
                            'WHERE TemplateType IN (\'custom\', \'text\', \'html\')';
 
-            // Escape single quotes in the user-supplied fragment to mitigate SOQL injection
-            if(String.isNotBlank(additionalCondition)) {
-                query += ' AND ' + String.escapeSingleQuotes(additionalCondition);
+            // Use a SOQL bind variable for the folder filter — no string concatenation of user input
+            if(String.isNotBlank(folderIdFilter)) {
+                query += ' AND FolderId = :folderIdFilter';
             }
 
             query += ' ORDER BY FolderId, DeveloperName';
