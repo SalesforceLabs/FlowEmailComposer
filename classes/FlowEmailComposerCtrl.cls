@@ -1,26 +1,27 @@
 global with sharing class FlowEmailComposerCtrl {
-    @AuraEnabled
-    public static List<EmailTemplate> getEmailTemplates(String additionalCondition, Integer maxLimit) {
+    @AuraEnabled 
+    public static List<EmailTemplate> getEmailTemplates(String folderIdFilter, Integer maxLimit) {
         if(Schema.sObjectType.EmailTemplate.isAccessible() && Schema.sObjectType.Attachment.isAccessible()) {
+            // Base query - uses bind variables for user input (SOQL injection safe)
+            // USER_MODE enforces CRUD/FLS per security review requirements
             String query = 'SELECT Subject, Id, Name, DeveloperName, FolderId, Folder.DeveloperName, Folder.Name, ' +
                            '(SELECT Id, Name FROM Attachments) ' +
                            'FROM EmailTemplate ' +
                            'WHERE TemplateType IN (\'custom\', \'text\', \'html\')';
-
-            // Escape single quotes in the user-supplied fragment to mitigate SOQL injection
-            if(String.isNotBlank(additionalCondition)) {
-                query += ' AND ' + String.escapeSingleQuotes(additionalCondition);
+    
+            // Append folder filter using bind variable - no string concatenation of user input
+            if(String.isNotBlank(folderIdFilter)) {
+                query += ' AND FolderId = :folderIdFilter';
             }
-
+    
             query += ' ORDER BY FolderId, DeveloperName';
 
-            // Cap limit to a safe upper bound
+            // LIMIT uses Integer (type-safe); validate range to prevent abuse
             Integer safeLimit = (maxLimit != null && maxLimit > 0 && maxLimit <= 1000) ? maxLimit : 0;
             if (safeLimit > 0) {
                 query += ' LIMIT ' + safeLimit;
             }
-
-            // Enforce CRUD/FLS for the running user
+    
             return Database.query(query, AccessLevel.USER_MODE);
         }
         return new List<EmailTemplate>();
@@ -146,24 +147,24 @@ global with sharing class FlowEmailComposerCtrl {
                     }
                     
                     if (taskId != null) {
-                        // Enforce FLS before updating Task fields
-                        if(Schema.sObjectType.Task.isUpdateable() &&
+                        // Check Field Level Security (FLS) before updating Task fields
+                        if(Schema.sObjectType.Task.isUpdateable() && 
                            Schema.sObjectType.Task.fields.Subject.isUpdateable() &&
                            Schema.sObjectType.Task.fields.Status.isUpdateable() &&
                            Schema.sObjectType.Task.fields.Description.isUpdateable()) {
-
+                            
                             String fromAddrlog = String.isNotBlank(fromAddress) ? 'From: ' + fromAddress + '\n' : '';
                             String toAddrlog = String.isNotBlank(toAddressesStr) ? 'To: ' + toAddressesStr + '\n': '';
                             String ccAddrlog = String.isNotBlank(ccAddressesStr) ? 'Cc: ' + ccAddressesStr + '\n': '';
                             String bccAddrlog = String.isNotBlank(bccAddressesStr) ? 'BCc: ' + bccAddressesStr + '\n': '';
                             String addressSeparator = '=================================================================='+'\n';
-
+                            
                             Task autoTask = new Task(Id = taskId);
                             autoTask.Subject = subject;
                             autoTask.Status = 'Completed';
                             autoTask.Description = fromAddrlog + toAddrlog + ccAddrlog + bccAddrlog + addressSeparator +
                                                   (String.isNotBlank(body) ? body.stripHtmlTags() : '');
-
+                            
                             Database.DMLOptions dmo = new Database.DMLOptions();
                             dmo.allowFieldTruncation = true;
                             autoTask.setOptions(dmo);

@@ -70,14 +70,17 @@ public class FlowEmailComposerCtrlTest {
     }
 
     @isTest
-    static void testGetEmailTemplates_WithFilter() {
+    static void testGetEmailTemplates_WithFolderIdFilter() {
+        EmailTemplate et = [SELECT FolderId FROM EmailTemplate WHERE DeveloperName = 'test_text_template' LIMIT 1];
+        Id folderId = et.FolderId;
         Test.startTest();
-        String condition = 'DeveloperName = \'test_text_template\'';
-        List<EmailTemplate> results = FlowEmailComposerCtrl.getEmailTemplates(condition, 0);
+        List<EmailTemplate> results = FlowEmailComposerCtrl.getEmailTemplates(folderId, 0);
         Test.stopTest();
         
-        System.assertEquals(1, results.size(), 'Should return exactly 1 filtered template');
-        System.assertEquals('test_text_template', results[0].DeveloperName);
+        System.assert(results.size() >= 2, 'Should return templates in the specified folder');
+        for (EmailTemplate t : results) {
+            System.assertEquals(folderId, t.FolderId, 'All results should be from the filtered folder');
+        }
     }
 
     @isTest
