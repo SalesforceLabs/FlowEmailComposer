@@ -19,6 +19,7 @@ export default class flowEmailComposer extends LightningElement {
     @api senderName;
     @api logEmail = false;
     @api additionalCondition;
+    @api folderIdFilter;
     @api recordId;
     @api emailBody;
     @api maxLimit;
@@ -200,7 +201,8 @@ export default class flowEmailComposer extends LightningElement {
     initializeComponent() {
         this.showSpinner = true;
         //Call Apex to get initial list of folders and templates
-        getEmailTemplates({ folderIdFilter: this.additionalCondition, maxLimit: this.maxLimit })
+        const filterValue = this.folderIdFilter || this.additionalCondition;
+        getEmailTemplates({ folderIdFilter: filterValue, maxLimit: this.maxLimit })
             .then((templates) => {
                 const folders = [];
                 templates.forEach((template) => {
