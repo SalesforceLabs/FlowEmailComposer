@@ -15,7 +15,8 @@
             <property name="fromAddress" label="From Email Address" type="String" />
             <property name="senderName" label="Sender Name" type="String"/>
             <property name="hideTemplateSelection" label="Hide Template Selection" type="Boolean"/>
-            <property name="additionalCondition" label="Folder ID Filter" type="String" description="Filter templates by Folder Id (e.g. Unfiled Public Email Templates folder Id)"/>
+            <property name="additionalCondition" label="Folder ID Filter (Legacy)" type="String" description="Legacy name for the folder filter — pass a Folder Id to restrict the template list. Prefer the newer 'Folder ID Filter' (folderIdFilter) property in new flows; this one is kept for backwards compatibility."/>
+            <property name="folderIdFilter" label="Folder ID Filter" type="String" description="Filter templates by Folder Id (e.g. Unfiled Public Email Templates folder Id). If both this and the legacy 'Folder ID Filter (Legacy)' are set, this one wins."/>
             <property name="maxLimit" label="Limit of Email Templates Returned" type="Integer" description="Enter a number of Templates to return in the picker"/>
             <property name="emailTemplateId" label="Default Email Template Id" type="String"/>
             <property name="whatId" label="Related Record Id" type="String" description="Used in merge fields and activity tracking" />            
