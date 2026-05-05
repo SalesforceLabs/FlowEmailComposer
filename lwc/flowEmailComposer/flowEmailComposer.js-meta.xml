@@ -15,7 +15,7 @@
             <property name="fromAddress" label="From Email Address" type="String" />
             <property name="senderName" label="Sender Name" type="String"/>
             <property name="hideTemplateSelection" label="Hide Template Selection" type="Boolean"/>
-            <property name="additionalCondition" label="Additional Template Filter" type="String" description="Add additional filter criteria to return specific email templates i.e. FolderId = 'xyz'"/>
+            <property name="additionalCondition" label="Folder ID Filter" type="String" description="Filter templates by Folder Id (e.g. Unfiled Public Email Templates folder Id)"/>
             <property name="maxLimit" label="Limit of Email Templates Returned" type="Integer" description="Enter a number of Templates to return in the picker"/>
             <property name="emailTemplateId" label="Default Email Template Id" type="String"/>
             <property name="whatId" label="Related Record Id" type="String" description="Used in merge fields and activity tracking" />            
@@ -25,6 +25,26 @@
             <property name="recordId" label="Uploaded File Related Record Id" type="String"/>
             <property name="emailBody" label="Email Body" type="String"/>
             <property name="transitionOnSend" label="Navigate Flow on Send" type="Boolean" description="When true after successful email send flow will navigate to next screen or finish"/>
+            <property name="defaultFolderId" label="Default Email Template Folder Id" type="String" description="Pre-selects this folder in the folder picker on load."/>
+            <property name="hideFolderPicker" label="Hide Folder Picker Only" type="Boolean" description="Hides just the folder dropdown. Template picker remains visible. Ignored if Hide Template Selection is true."/>
+            <property name="hideAttachments" label="Hide File Attachment Uploader" type="Boolean" description="Hides the 'Attach New Files' uploader. Template-provided attachments still display."/>
+            <property name="expandCcOnLoad" label="Expand CC on Load" type="Boolean" description="Show the CC field expanded on load."/>
+            <property name="expandBccOnLoad" label="Expand BCC on Load" type="Boolean" description="Show the BCC field expanded on load."/>
+            <property name="bodyHeight" label="Body Editor Starting Height (px)" type="Integer" description="Starting height in pixels; users can drag to resize. Defaults to 300."/>
+            <property name="toLabel" label="To Field Label" type="String" description="Custom label for the To field. Defaults to 'To'."/>
+            <property name="toHelpText" label="To Field Help Text" type="String" description="Tooltip text for the To field."/>
+            <property name="ccLabel" label="CC Field Label" type="String" description="Custom label for the CC field. Defaults to 'CC'."/>
+            <property name="ccHelpText" label="CC Field Help Text" type="String" description="Tooltip text for the CC field."/>
+            <property name="bccLabel" label="BCC Field Label" type="String" description="Custom label for the BCC field. Defaults to 'BCC'."/>
+            <property name="bccHelpText" label="BCC Field Help Text" type="String" description="Tooltip text for the BCC field."/>
+            <property name="subjectLabel" label="Subject Field Label" type="String" description="Custom label for the Subject field. Defaults to 'Subject'."/>
+            <property name="subjectHelpText" label="Subject Field Help Text" type="String" description="Tooltip text for the Subject field."/>
+            <property name="bodyLabel" label="Body Field Label" type="String" description="Custom label for the Body field. Defaults to 'Body'."/>
+            <property name="bodyHelpText" label="Body Field Help Text" type="String" description="Tooltip text for the Body field."/>
+            <property name="folderLabel" label="Folder Picker Label" type="String" description="Custom label for the folder picker. Defaults to 'Select Email Template Folder:'."/>
+            <property name="folderHelpText" label="Folder Picker Help Text" type="String" description="Tooltip text for the folder picker."/>
+            <property name="templateLabel" label="Template Picker Label" type="String" description="Custom label for the template picker. Defaults to 'Select a Template:'."/>
+            <property name="templateHelpText" label="Template Picker Help Text" type="String" description="Tooltip text for the template picker."/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

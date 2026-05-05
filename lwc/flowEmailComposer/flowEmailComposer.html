@@ -3,7 +3,9 @@
         <lightning-layout multiple-rows>
             <!-- To Address -->
             <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                <lightning-input value={toAddresses} required label="To: Specify comma-separated e-mail addresses"
+                <lightning-input value={toAddresses} required
+                    label={resolvedToLabel}
+                    field-level-help={toHelpText}
                     onchange={handleInputChange} data-field="toAddresses">
                 </lightning-input>
             </lightning-layout-item>
@@ -23,14 +25,18 @@
             <!-- CC and BCC Fields -->
             <template lwc:if={showCCField}>
                 <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                    <lightning-input value={ccAddresses} label="CC: Specify comma-separated e-mail addresses"
+                    <lightning-input value={ccAddresses}
+                        label={resolvedCcLabel}
+                        field-level-help={ccHelpText}
                         onchange={handleInputChange} data-field="ccAddresses">
                     </lightning-input>
                 </lightning-layout-item>
             </template>
             <template lwc:if={showBccField}>
                 <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                    <lightning-input value={bccAddresses} label="Bcc: Specify comma-separated e-mail addresses"
+                    <lightning-input value={bccAddresses}
+                        label={resolvedBccLabel}
+                        field-level-help={bccHelpText}
                         onchange={handleInputChange} data-field="bccAddresses">
                     </lightning-input>
                 </lightning-layout-item>
@@ -38,20 +44,33 @@
 
             <!-- Subject -->
             <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                <lightning-input name="subject" label="Subject" value={subject} required onchange={handleInputChange}
+                <lightning-input name="subject"
+                    label={resolvedSubjectLabel}
+                    field-level-help={subjectHelpText}
+                    value={subject} required onchange={handleInputChange}
                     data-field="subject">
                 </lightning-input>
             </lightning-layout-item>
 
-            <!-- Email Template Selection -->
-            <template if:false={hideTemplateSelection}>
+            <!-- Email Template Folder Picker -->
+            <template lwc:if={showFolderPicker}>
                 <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                    <lightning-combobox name="templateFolder" label="Select Email Template Folder:" value={selFolderId}
+                    <lightning-combobox name="templateFolder"
+                        label={resolvedFolderLabel}
+                        field-level-help={folderHelpText}
+                        value={selFolderId}
                         options={folderOptions} onchange={filterTemplatesByFolder}>
                     </lightning-combobox>
                 </lightning-layout-item>
+            </template>
+
+            <!-- Email Template Picker -->
+            <template lwc:if={showTemplatePicker}>
                 <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                    <lightning-combobox name="template" label="Select a Template:" value={selTemplateId}
+                    <lightning-combobox name="template"
+                        label={resolvedTemplateLabel}
+                        field-level-help={templateHelpText}
+                        value={selTemplateId}
                         options={filteredTemplateList} onchange={templateChanged}>
                     </lightning-combobox>
                 </lightning-layout-item>
@@ -59,11 +78,16 @@
 
             <!-- Email Body -->
             <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                <label class="slds-form-element__label">
-                    <abbr class="slds-required" title="required">*</abbr> Body
-                </label>
-                <lightning-input-rich-text label="Body" onchange={handleBodyChange}
-                    data-field="emailBody">
+                <div class="slds-grid slds-grid_vertical-align-center">
+                    <label class="slds-form-element__label">
+                        <abbr class="slds-required" title="required">*</abbr> {resolvedBodyLabel}
+                    </label>
+                    <template lwc:if={bodyHelpText}>
+                        <lightning-helptext content={bodyHelpText}></lightning-helptext>
+                    </template>
+                </div>
+                <lightning-input-rich-text label={resolvedBodyLabel}
+                    onchange={handleBodyChange} data-field="emailBody">
                 </lightning-input-rich-text>
             </lightning-layout-item>
 
@@ -89,12 +113,14 @@
                 </lightning-layout-item>
             </template>
 
-            <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
-                <label class="slds-form-element__label">Attach New Files:</label>
-                <lightning-file-upload label="" multiple record-id={uploadRefId}
-                    onuploadfinished={handleUpload_lightningFile}>
-                </lightning-file-upload>
-            </lightning-layout-item>
+            <template lwc:if={showAttachmentUploader}>
+                <lightning-layout-item size="12" class="slds-var-p-horizontal_small">
+                    <label class="slds-form-element__label">Attach New Files:</label>
+                    <lightning-file-upload label="" multiple record-id={recordId}
+                        onuploadfinished={handleUpload_lightningFile}>
+                    </lightning-file-upload>
+                </lightning-layout-item>
+            </template>
 
             <!-- Send Button -->
             <lightning-layout-item size="12" class="slds-var-p-around_small slds-text-align_center">
