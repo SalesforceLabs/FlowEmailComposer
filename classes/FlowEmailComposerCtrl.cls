@@ -1,28 +1,27 @@
 global with sharing class FlowEmailComposerCtrl {
-    @AuraEnabled 
+    @AuraEnabled
     public static List<EmailTemplate> getEmailTemplates(String additionalCondition, Integer maxLimit) {
         if(Schema.sObjectType.EmailTemplate.isAccessible() && Schema.sObjectType.Attachment.isAccessible()) {
-            // Base query
             String query = 'SELECT Subject, Id, Name, DeveloperName, FolderId, Folder.DeveloperName, Folder.Name, ' +
                            '(SELECT Id, Name FROM Attachments) ' +
                            'FROM EmailTemplate ' +
                            'WHERE TemplateType IN (\'custom\', \'text\', \'html\')';
-    
-            // Append additional condition if provided
+
+            // Escape single quotes in the user-supplied fragment to mitigate SOQL injection
             if(String.isNotBlank(additionalCondition)) {
-                query += ' AND ' + additionalCondition;
+                query += ' AND ' + String.escapeSingleQuotes(additionalCondition);
             }
-    
-            // Add ORDER BY clause
+
             query += ' ORDER BY FolderId, DeveloperName';
 
-            // Add LIMIT clause if maxLimit is specified
-            if (maxLimit > 0) {
-            query += ' LIMIT ' + maxLimit;
+            // Cap limit to a safe upper bound
+            Integer safeLimit = (maxLimit != null && maxLimit > 0 && maxLimit <= 1000) ? maxLimit : 0;
+            if (safeLimit > 0) {
+                query += ' LIMIT ' + safeLimit;
             }
-    
-            // Execute the dynamic query
-            return Database.query(query);
+
+            // Enforce CRUD/FLS for the running user
+            return Database.query(query, AccessLevel.USER_MODE);
         }
         return new List<EmailTemplate>();
     }
@@ -30,7 +29,7 @@ global with sharing class FlowEmailComposerCtrl {
     
     @AuraEnabled 
     public static EmailMsg getTemplateDetails(string templateId, String whoId, String whatId){
-        Messaging.SingleEmailMessage email = Messaging.renderStoredEmailTemplate(templateId, whoId, WhatId,Messaging.AttachmentRetrievalOption.METADATA_ONLY);
+        Messaging.SingleEmailMessage email = Messaging.renderStoredEmailTemplate(templateId, whoId, whatId, Messaging.AttachmentRetrievalOption.METADATA_ONLY);
         EmailMsg msg = new EmailMsg();
         msg.subject = email.getSubject();
         msg.body = email.getHtmlBody();
@@ -47,9 +46,9 @@ global with sharing class FlowEmailComposerCtrl {
                 fawList.add(faw);
             }
         }
-        for(ContentDocumentLink cdl : [Select ContentDocument.Id, ContentDocument.title, ContentDocument.fileExtension
-                                       from contentdocumentlink
-                                       where linkedEntityId=:templateId]){
+        for(ContentDocumentLink cdl : [SELECT ContentDocument.Id, ContentDocument.title, ContentDocument.fileExtension
+                                       FROM ContentDocumentLink
+                                       WHERE linkedEntityId = :templateId]){
             FileAttachmentWrapper faw = new FileAttachmentWrapper();
             faw.attachId = cdl.ContentDocument.id;
             faw.isContentDocument = true;                               
@@ -90,7 +89,7 @@ global with sharing class FlowEmailComposerCtrl {
             
             Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
             if(String.isNotBlank(fromAddress)){
-                OrgWideEmailAddress[] owea = new List<OrgWideEmailAddress>([select Id from OrgWideEmailAddress where Address = :fromAddress]);
+                OrgWideEmailAddress[] owea = new List<OrgWideEmailAddress>([SELECT Id FROM OrgWideEmailAddress WHERE Address = :fromAddress]);
 				if ( owea.size() > 0 ) {
     				email.setOrgWideEmailAddressId(owea.get(0).Id);
                     email.setUseSignature(false);
@@ -147,22 +146,29 @@ global with sharing class FlowEmailComposerCtrl {
                     }
                     
                     if (taskId != null) {
-                        String fromAddrlog = String.isNotBlank(fromAddress) ? 'From: ' + fromAddress + '\n' : '';
-                        String toAddrlog = String.isNotBlank(toAddressesStr) ? 'To: ' + toAddressesStr + '\n': '';
-                        String ccAddrlog = String.isNotBlank(ccAddressesStr) ? 'Cc: ' + ccAddressesStr + '\n': '';
-                        String bccAddrlog = String.isNotBlank(bccAddressesStr) ? 'BCc: ' + bccAddressesStr + '\n': '';
-                        String addressSeparator = '=================================================================='+'\n';
-                        
-                        Task autoTask = new Task(Id = taskId);
-                        autoTask.Subject = subject;
-                        autoTask.Status = 'Completed';
-                        autoTask.Description = fromAddrlog + toAddrlog + ccAddrlog + bccAddrlog + addressSeparator +
-                                              (String.isNotBlank(body) ? body.stripHtmlTags() : '');
-                        
-                        Database.DMLOptions dmo = new Database.DMLOptions();
-                        dmo.allowFieldTruncation = true;
-                        autoTask.setOptions(dmo);
-                        update autoTask;
+                        // Enforce FLS before updating Task fields
+                        if(Schema.sObjectType.Task.isUpdateable() &&
+                           Schema.sObjectType.Task.fields.Subject.isUpdateable() &&
+                           Schema.sObjectType.Task.fields.Status.isUpdateable() &&
+                           Schema.sObjectType.Task.fields.Description.isUpdateable()) {
+
+                            String fromAddrlog = String.isNotBlank(fromAddress) ? 'From: ' + fromAddress + '\n' : '';
+                            String toAddrlog = String.isNotBlank(toAddressesStr) ? 'To: ' + toAddressesStr + '\n': '';
+                            String ccAddrlog = String.isNotBlank(ccAddressesStr) ? 'Cc: ' + ccAddressesStr + '\n': '';
+                            String bccAddrlog = String.isNotBlank(bccAddressesStr) ? 'BCc: ' + bccAddressesStr + '\n': '';
+                            String addressSeparator = '=================================================================='+'\n';
+
+                            Task autoTask = new Task(Id = taskId);
+                            autoTask.Subject = subject;
+                            autoTask.Status = 'Completed';
+                            autoTask.Description = fromAddrlog + toAddrlog + ccAddrlog + bccAddrlog + addressSeparator +
+                                                  (String.isNotBlank(body) ? body.stripHtmlTags() : '');
+
+                            Database.DMLOptions dmo = new Database.DMLOptions();
+                            dmo.allowFieldTruncation = true;
+                            autoTask.setOptions(dmo);
+                            update autoTask;
+                        }
                     }
                 }
             } else {

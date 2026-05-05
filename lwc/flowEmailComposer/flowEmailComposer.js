@@ -47,6 +47,102 @@ export default class flowEmailComposer extends LightningElement {
         this.initializeComponent();
     }
 
+    renderedCallback() {
+        this._syncBodyEditorValue();
+        this._wireBodyEditorCursorFix();
+    }
+
+    _syncBodyEditorValue() {
+        if (this.emailBody === this._lastPushedBody) return;
+        const rte = this.template.querySelector('lightning-input-rich-text');
+        if (!rte) return;
+        rte.value = this.emailBody || '';
+        this._lastPushedBody = this.emailBody;
+    }
+
+    // Intercept the first click into the rich-text editor so the caret lands
+    // at the click point instead of snapping to the end of the paragraph —
+    // a long-standing quirk of Quill when the editable first receives focus
+    // with pre-populated content (e.g. a default template or default body).
+    _wireBodyEditorCursorFix() {
+        const rte = this.template.querySelector('lightning-input-rich-text');
+        if (!rte || !rte.shadowRoot) return;
+        const editable = rte.shadowRoot.querySelector('.ql-editor') ||
+                         rte.shadowRoot.querySelector('.slds-rich-text-editor__textarea [contenteditable="true"]') ||
+                         rte.shadowRoot.querySelector('[contenteditable="true"]');
+        if (!editable || editable.dataset.fecCursorWired === 'true') return;
+
+        const collectShadowRoots = () => {
+            const roots = [];
+            let node = editable;
+            while (node) {
+                const root = node.getRootNode();
+                if (root && root.host) {
+                    roots.push(root);
+                    node = root.host;
+                } else {
+                    break;
+                }
+            }
+            return roots;
+        };
+
+        const rangeFromPoint = (x, y) => {
+            const shadowRoots = collectShadowRoots();
+            if (document.caretPositionFromPoint) {
+                let pos = null;
+                try {
+                    pos = document.caretPositionFromPoint(x, y, { shadowRoots });
+                } catch (e) {
+                    pos = document.caretPositionFromPoint(x, y);
+                }
+                if (pos && pos.offsetNode) {
+                    const r = document.createRange();
+                    r.setStart(pos.offsetNode, pos.offset);
+                    r.collapse(true);
+                    return r;
+                }
+            }
+            if (document.caretRangeFromPoint) {
+                return document.caretRangeFromPoint(x, y);
+            }
+            return null;
+        };
+
+        const applyCaret = (x, y) => {
+            const range = rangeFromPoint(x, y);
+            if (!range) return false;
+            if (!editable.contains(range.startContainer)) return false;
+            const root = editable.getRootNode();
+            const selection = (root && root.getSelection) ? root.getSelection() : window.getSelection();
+            if (!selection) return false;
+            selection.removeAllRanges();
+            selection.addRange(range);
+            return true;
+        };
+
+        editable.addEventListener('mousedown', (event) => {
+            const root = editable.getRootNode();
+            const active = root && root.activeElement;
+            const hadFocus = active && (active === editable || editable.contains(active));
+            if (hadFocus) return;
+            if (event.button !== 0) return;
+
+            event.preventDefault();
+            const x = event.clientX;
+            const y = event.clientY;
+
+            try { editable.focus({ preventScroll: true }); } catch (e) { editable.focus(); }
+
+            applyCaret(x, y);
+            requestAnimationFrame(() => {
+                applyCaret(x, y);
+                requestAnimationFrame(() => applyCaret(x, y));
+            });
+        });
+        editable.dataset.fecCursorWired = 'true';
+    }
+
     // Initialization method
     initializeComponent() {
         this.showSpinner = true;
@@ -293,8 +389,13 @@ export default class flowEmailComposer extends LightningElement {
         const field = event.target.dataset.field;
         const value = event.target.value;
         this[field] = value;
-        this._fireFlowEvent(this.field, this.value)
-        //console.log('handleInputChange: field: ' + field + ' value: ' + value)
+        this._fireFlowEvent(field, value);
+    }
+
+    handleBodyChange(event) {
+        const value = event.target.value;
+        this.emailBody = value;
+        this._fireFlowEvent('emailBody', value);
     }
 
     // navigate to the next screen or (if last element) terminate the flow    
