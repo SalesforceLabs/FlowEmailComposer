@@ -83,118 +83,46 @@ export default class flowEmailComposer extends LightningElement {
         this.initializeComponent();
     }
 
+    // Declaratively bound to lightning-input-rich-text's `value`. Reflects the
+    // body content as set by template selection / config default / reset — but
+    // NOT live keystrokes (handleBodyChange intentionally does not write back to
+    // _bodyDisplay), so the binding never re-renders mid-edit and the caret stays
+    // where the user clicked.
+    get bodyValue() {
+        return this._bodyDisplay || '';
+    }
+
     renderedCallback() {
-        this._applyBodyEditorSizing();
-        this._syncBodyEditorValue();
-        this._wireBodyEditorCursorFix();
+        this._primeBodyEditor();
     }
 
-    _applyBodyEditorSizing() {
+    // The editor (Quill, inside lightning-input-rich-text's sealed native shadow
+    // DOM) snaps the caret to the END of the content on its FIRST focus — the very
+    // click that activates the editor. We can't reach the focus handler to stop it,
+    // but we can consume that first focus programmatically here, on load, before the
+    // user clicks. After this, the user's first real click is a *subsequent* focus,
+    // which Quill honors at the pointer position. Runs once, only when there is
+    // pre-populated content to jump within.
+    //
+    // Note: this focus() scrolls the editor into view on load — an accepted
+    // tradeoff for keeping the caret-placement fix working.
+    _primeBodyEditor() {
+        if (this._bodyPrimed || !this._bodyDisplay) return;
         const rte = this.template.querySelector('lightning-input-rich-text');
-        if (!rte || !rte.shadowRoot) return;
-        const editable = rte.shadowRoot.querySelector('.slds-rich-text-editor__textarea');
-        if (!editable) return;
-        const h = this.bodyHeight && this.bodyHeight > 0 ? this.bodyHeight : 300;
-        if (editable.dataset.fecApplied === String(h)) return;
-        editable.style.setProperty('min-height', `${h}px`, 'important');
-        editable.style.setProperty('height', `${h}px`, 'important');
-        editable.style.setProperty('resize', 'vertical', 'important');
-        editable.style.setProperty('overflow', 'auto', 'important');
-        editable.dataset.fecApplied = String(h);
-    }
-
-    _syncBodyEditorValue() {
-        if (this._bodyDisplay === this._lastPushedBody) return;
-        const rte = this.template.querySelector('lightning-input-rich-text');
-        if (!rte) return;
-        rte.value = this._bodyDisplay || '';
-        this._lastPushedBody = this._bodyDisplay;
-    }
-
-    _wireBodyEditorCursorFix() {
-        const rte = this.template.querySelector('lightning-input-rich-text');
-        if (!rte || !rte.shadowRoot) return;
-        const editable = rte.shadowRoot.querySelector('.ql-editor') ||
-                         rte.shadowRoot.querySelector('.slds-rich-text-editor__textarea [contenteditable="true"]') ||
-                         rte.shadowRoot.querySelector('[contenteditable="true"]');
-        if (!editable || editable.dataset.fecCursorWired === 'true') return;
-
-        const collectShadowRoots = () => {
-            const roots = [];
-            let node = editable;
-            while (node) {
-                const root = node.getRootNode();
-                if (root && root.host) {
-                    roots.push(root);
-                    node = root.host;
-                } else {
-                    break;
-                }
-            }
-            return roots;
-        };
-
-        const rangeFromPoint = (x, y) => {
-            const shadowRoots = collectShadowRoots();
-            if (document.caretPositionFromPoint) {
-                let pos = null;
-                try {
-                    pos = document.caretPositionFromPoint(x, y, { shadowRoots });
-                } catch (e) {
-                    pos = document.caretPositionFromPoint(x, y);
-                }
-                if (pos && pos.offsetNode) {
-                    const r = document.createRange();
-                    r.setStart(pos.offsetNode, pos.offset);
-                    r.collapse(true);
-                    return r;
-                }
-            }
-            if (document.caretRangeFromPoint) {
-                return document.caretRangeFromPoint(x, y);
-            }
-            return null;
-        };
-
-        const applyCaret = (x, y) => {
-            const range = rangeFromPoint(x, y);
-            if (!range) return false;
-            if (!editable.contains(range.startContainer)) return false;
-            const root = editable.getRootNode();
-            const selection = (root && root.getSelection) ? root.getSelection() : window.getSelection();
-            if (!selection) return false;
-            selection.removeAllRanges();
-            selection.addRange(range);
-            return true;
-        };
-
-        editable.addEventListener('mousedown', (event) => {
-            const root = editable.getRootNode();
-            const active = root && root.activeElement;
-            const hadFocus = active && (active === editable || editable.contains(active));
-            // Only intervene on the *first* click that brings focus into the editor.
-            // After that, let Quill handle clicks normally.
-            if (hadFocus) return;
-            if (event.button !== 0) return;
-
-            // Prevent Quill's default "focus + place caret at end of content" routine.
-            event.preventDefault();
-
-            const x = event.clientX;
-            const y = event.clientY;
-
-            // Focus manually without scrolling, then position the caret at the click point.
-            try { editable.focus({ preventScroll: true }); } catch (e) { editable.focus(); }
-
-            // Apply immediately, then again across two rAFs in case Quill still tries
-            // to reset the selection after focus settles.
-            applyCaret(x, y);
+        if (!rte || typeof rte.focus !== 'function') return;
+        this._bodyPrimed = true;
+        try {
+            rte.focus();
+            // Release focus on the next frame so the editor doesn't sit active.
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
             requestAnimationFrame(() => {
-                applyCaret(x, y);
-                requestAnimationFrame(() => applyCaret(x, y));
+                if (typeof rte.blur === 'function') {
+                    try { rte.blur(); } catch (e) { /* noop */ }
+                }
             });
-        });
-        editable.dataset.fecCursorWired = 'true';
+        } catch (e) {
+            /* noop */
+        }
     }
 
     // Initialization method
