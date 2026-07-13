@@ -79,7 +79,10 @@ export default class flowEmailComposer extends LightningElement {
     connectedCallback() {
         if (this.expandCcOnLoad)  this.showCCField  = true;
         if (this.expandBccOnLoad) this.showBccField = true;
-        if (this.emailBody) this._bodyDisplay = this.emailBody;
+        if (this.emailBody) {
+            this.emailBody = this._sanitizeTemplateHtml(this.emailBody);
+            this._bodyDisplay = this.emailBody;
+        }
         this.initializeComponent();
     }
 
@@ -97,20 +100,27 @@ export default class flowEmailComposer extends LightningElement {
     }
 
     // The editor (Quill, inside lightning-input-rich-text's sealed native shadow
-    // DOM) snaps the caret to the END of the content on its FIRST focus — the very
-    // click that activates the editor. We can't reach the focus handler to stop it,
-    // but we can consume that first focus programmatically here, on load, before the
-    // user clicks. After this, the user's first real click is a *subsequent* focus,
-    // which Quill honors at the pointer position. Runs once, only when there is
-    // pre-populated content to jump within.
+    // DOM) snaps the caret to the END of the content on its FIRST focus after the
+    // content is set. That happens on initial mount AND every time the value is
+    // replaced (e.g. selecting a template — especially Classic HTML templates whose
+    // heavier markup makes Quill fully re-set its contents and reset selection).
+    // We consume that first-focus end-snap programmatically here so the user's next
+    // real click is a *subsequent* focus, which Quill honors at the pointer position.
     //
-    // Note: this focus() scrolls the editor into view on load — an accepted
-    // tradeoff for keeping the caret-placement fix working.
+    // Re-primes whenever _bodyDisplay changes to a new value. Because
+    // handleBodyChange intentionally does NOT write back to _bodyDisplay, keystrokes
+    // never trigger this — only initial load, template selection, and reset do.
+    // Skip when the editor is currently focused so we never hijack an active edit.
+    //
+    // Note: focus() scrolls the editor into view — an accepted tradeoff for
+    // keeping the caret-placement fix working.
     _primeBodyEditor() {
-        if (this._bodyPrimed || !this._bodyDisplay) return;
+        if (!this._bodyDisplay) return;
+        if (this._lastPrimedBody === this._bodyDisplay) return;
         const rte = this.template.querySelector('lightning-input-rich-text');
         if (!rte || typeof rte.focus !== 'function') return;
-        this._bodyPrimed = true;
+        if (this.template.activeElement === rte) return;
+        this._lastPrimedBody = this._bodyDisplay;
         try {
             rte.focus();
             // Release focus on the next frame so the editor doesn't sit active.
@@ -122,6 +132,46 @@ export default class flowEmailComposer extends LightningElement {
             });
         } catch (e) {
             /* noop */
+        }
+    }
+
+    // Classic HTML email templates come back from Apex as a full rendered document
+    // (`<html><head><style>…</style></head><body>…</body></html>`) whose body is a
+    // layout <table> (header row / accent bars / main content row / footer row).
+    // Quill can't edit tables — it wraps them in a single `ql-table-blob` blot that
+    // is atomic, so backspace deletes the WHOLE body and typing only appends outside
+    // the blob. Lightning email templates aren't table-based, which is why they work.
+    //
+    // Two passes:
+    //   1. Strip document wrappers + <style>/<script>/<meta>/<link>/<title>.
+    //   2. Unwrap tables into editable block markup — <table>/<tbody>/<thead>/
+    //      <tfoot>/<tr> become <div>, <td>/<th> become <p>. Content is preserved;
+    //      the un-editable table scaffolding is not. Visual layout of the classic
+    //      template chrome (colored accent bars) is lost — an acceptable tradeoff
+    //      for a body the user can actually edit.
+    _sanitizeTemplateHtml(html) {
+        if (!html || typeof html !== 'string') return html || '';
+        const hasWrapper = /<\s*(html|head|body)\b/i.test(html);
+        const hasHeadTags = /<\s*(style|script|meta|link|title)\b/i.test(html);
+        const hasTable = /<\s*(table|tr|td|th|tbody|thead|tfoot)\b/i.test(html);
+        if (!hasWrapper && !hasHeadTags && !hasTable) return html;
+        try {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            doc.querySelectorAll('style, script, meta, link, title').forEach(n => n.remove());
+            const unwrap = (el, replacementTag) => {
+                const replacement = doc.createElement(replacementTag);
+                while (el.firstChild) replacement.appendChild(el.firstChild);
+                el.parentNode.replaceChild(replacement, el);
+            };
+            // Innermost-first: cells before rows before tables so replacements
+            // don't invalidate the outer selection.
+            doc.querySelectorAll('td, th').forEach(el => unwrap(el, 'p'));
+            doc.querySelectorAll('tr').forEach(el => unwrap(el, 'div'));
+            doc.querySelectorAll('tbody, thead, tfoot').forEach(el => unwrap(el, 'div'));
+            doc.querySelectorAll('table').forEach(el => unwrap(el, 'div'));
+            return (doc.body && doc.body.innerHTML) ? doc.body.innerHTML : html;
+        } catch (e) {
+            return html;
         }
     }
 
@@ -214,8 +264,9 @@ export default class flowEmailComposer extends LightningElement {
             .then((result) => {
                 // Handle the successful response
                 this.subject = result.subject;
-                this.emailBody = result.body;
-                this._bodyDisplay = result.body;
+                const cleanBody = this._sanitizeTemplateHtml(result.body);
+                this.emailBody = cleanBody;
+                this._bodyDisplay = cleanBody;
                 this.attachmentsFromTemplate = result.fileAttachments;
                 //console.log("Attachments are " + JSON.stringify(this.attachmentsFromTemplate));
 
