@@ -137,24 +137,16 @@ export default class flowEmailComposer extends LightningElement {
 
     // Classic HTML email templates come back from Apex as a full rendered document
     // (`<html><head><style>…</style></head><body>…</body></html>`) whose body is a
-    // layout <table> (header row / accent bars / main content row / footer row).
-    // Quill can't edit tables — it wraps them in a single `ql-table-blob` blot that
-    // is atomic, so backspace deletes the WHOLE body and typing only appends outside
-    // the blob. Lightning email templates aren't table-based, which is why they work.
+    // layout <table>. Quill treats that as an atomic `ql-table-blob` — un-editable.
     //
-    // Two passes:
-    //   1. Strip document wrappers + <style>/<script>/<meta>/<link>/<title>.
-    //   2. Unwrap tables into editable block markup — <table>/<tbody>/<thead>/
-    //      <tfoot>/<tr> become <div>, <td>/<th> become <p>. Content is preserved;
-    //      the un-editable table scaffolding is not. Visual layout of the classic
-    //      template chrome (colored accent bars) is lost — an acceptable tradeoff
-    //      for a body the user can actually edit.
+    // Only unwrap tables when document wrappers or <style>/<script> are present —
+    // those indicate a Classic full-document template. Lightning email templates may
+    // include tables for content layout and should keep them intact.
     _sanitizeTemplateHtml(html) {
         if (!html || typeof html !== 'string') return html || '';
         const hasWrapper = /<\s*(html|head|body)\b/i.test(html);
         const hasHeadTags = /<\s*(style|script|meta|link|title)\b/i.test(html);
-        const hasTable = /<\s*(table|tr|td|th|tbody|thead|tfoot)\b/i.test(html);
-        if (!hasWrapper && !hasHeadTags && !hasTable) return html;
+        if (!hasWrapper && !hasHeadTags) return html;
         try {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             doc.querySelectorAll('style, script, meta, link, title').forEach(n => n.remove());
@@ -163,8 +155,6 @@ export default class flowEmailComposer extends LightningElement {
                 while (el.firstChild) replacement.appendChild(el.firstChild);
                 el.parentNode.replaceChild(replacement, el);
             };
-            // Innermost-first: cells before rows before tables so replacements
-            // don't invalidate the outer selection.
             doc.querySelectorAll('td, th').forEach(el => unwrap(el, 'p'));
             doc.querySelectorAll('tr').forEach(el => unwrap(el, 'div'));
             doc.querySelectorAll('tbody, thead, tfoot').forEach(el => unwrap(el, 'div'));
